@@ -17,6 +17,7 @@ export interface Tanda {
 
 export interface TandaConParticipantes extends Tanda {
   participantes_count: number;
+  numeros_reservados?: number; // ⭐ AGREGADO
 }
 
 export interface ParticipanteTanda {
@@ -262,9 +263,8 @@ export async function createTanda(data: {
       .insert([{ 
         ...data, 
         disponible: true
-        // ⭐ REMOVIDO: participantes_count no existe en la BD
       }])
-      .select() // Devuelve la tanda creada
+      .select()
       .single();
 
     if (error) {
@@ -280,7 +280,6 @@ export async function createTanda(data: {
 
     console.log('✅ Tanda creada exitosamente:', tanda);
     
-    // Agregar el conteo inicial (será 0 porque es nueva)
     const tandaConConteo = {
       ...tanda,
       participantes_count: 0
@@ -296,8 +295,7 @@ export async function createTanda(data: {
 // ========== ADMIN: ACTUALIZAR TANDA ==========
 export async function updateTanda(id: string, data: Partial<Tanda>) {
   try {
-    // Asegurarnos de no enviar participantes_count a la BD
-    const { participantes_count, ...dataToUpdate } = data as any;
+    const { participantes_count, numeros_reservados, ...dataToUpdate } = data as any;
     
     const { data: tanda, error } = await supabase
       .from('tandas')
@@ -334,7 +332,6 @@ export async function getMisTandas(userId: string): Promise<TandaConParticipante
   try {
     console.log('🔍 Obteniendo tandas del usuario:', userId);
 
-    // Obtener las tandas donde participa el usuario
     const { data: participaciones, error: participacionesError } = await supabase
       .from('tanda_participantes')
       .select('tanda_id, turno, estado, fecha_ingreso')
@@ -351,10 +348,8 @@ export async function getMisTandas(userId: string): Promise<TandaConParticipante
       return [];
     }
 
-    // Obtener los IDs de las tandas
     const tandaIds = participaciones.map(p => p.tanda_id);
 
-    // Obtener información de las tandas
     const { data: tandas, error: tandasError } = await supabase
       .from('tandas')
       .select('*')
@@ -365,13 +360,11 @@ export async function getMisTandas(userId: string): Promise<TandaConParticipante
       return [];
     }
 
-    // Obtener conteo de participantes para cada tanda
     const { data: todosParticipantes } = await supabase
       .from('tanda_participantes')
       .select('tanda_id')
       .in('tanda_id', tandaIds);
 
-    // Combinar la información
     const tandasConInfo = tandas?.map(tanda => {
       const participacion = participaciones.find(p => p.tanda_id === tanda.id);
       const count = todosParticipantes?.filter(p => p.tanda_id === tanda.id).length || 0;
@@ -393,10 +386,7 @@ export async function getMisTandas(userId: string): Promise<TandaConParticipante
   }
 }
 
-
 // ========== FUNCIÓN PARA OBTENER NÚMEROS RESERVADOS ==========
-// Agregar esta función a tu archivo tandasService.ts existente
-
 export async function getNumerosReservados(tandaId: string): Promise<number[]> {
   try {
     console.log('🔍 Obteniendo números reservados para tanda:', tandaId);
@@ -429,7 +419,6 @@ export async function getEstadoNumeros(tandaId: string): Promise<{
   disponibles: number[];
 }> {
   try {
-    // Obtener info de la tanda
     const { data: tanda } = await supabase
       .from('tandas')
       .select('participantes_max')
@@ -438,13 +427,11 @@ export async function getEstadoNumeros(tandaId: string): Promise<{
 
     if (!tanda) throw new Error('Tanda no encontrada');
 
-    // Obtener números reservados
     const { data: reservados } = await supabase
       .from('numeros_reservados')
       .select('numero')
       .eq('tanda_id', tandaId);
 
-    // Obtener participantes (números ocupados)
     const { data: participantes } = await supabase
       .from('tanda_participantes')
       .select(`
@@ -454,12 +441,13 @@ export async function getEstadoNumeros(tandaId: string): Promise<{
       .eq('tanda_id', tandaId);
 
     const numerosReservados = reservados?.map(r => r.numero) || [];
-    const numerosOcupados = participantes?.map(p => ({
+    
+    // ⭐ FIX: Agregar tipo explícito
+    const numerosOcupados = participantes?.map((p: any) => ({
       numero: p.turno,
       nombre: p.users?.nombre || 'Usuario'
     })) || [];
 
-    // Calcular disponibles
     const todosLosNumeros = Array.from({ length: tanda.participantes_max }, (_, i) => i + 1);
     const numerosNoDisponibles = [
       ...numerosReservados,
