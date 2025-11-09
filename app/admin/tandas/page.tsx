@@ -183,17 +183,17 @@ export default function AdminTandasPage() {
                           </div>
                         </td>
                         <td className="p-4 text-center">
-                          {tanda.numeros_reservados > 0 ? (
-                            <div className="flex items-center justify-center gap-1">
-                              <Lock className="w-4 h-4 text-red-400" />
-                              <span className="text-red-400 font-bold">
-                                {tanda.numeros_reservados}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">0</span>
-                          )}
-                        </td>
+  {(tanda.numeros_reservados ?? 0) > 0 ? (
+    <div className="flex items-center justify-center gap-1">
+      <Lock className="w-4 h-4 text-red-400" />
+      <span className="text-red-400 font-bold">
+        {tanda.numeros_reservados ?? 0} reservados
+      </span>
+    </div>
+  ) : (
+    <span className="text-gray-500">Sin reservas</span>
+  )}
+</td>
                         <td className="p-4 text-center">
                           <span className={`font-bold ${
                             disponiblesReales > 5 ? 'text-green-400' : 
