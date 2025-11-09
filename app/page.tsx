@@ -458,7 +458,7 @@ function ProductoCard({ producto, parseImagenes, handleComprarAhora, handleAddTo
             />
             {imagenes.length > 1 && (
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-                {imagenes.map((_, index) => (
+                {imagenes.map((_: string, index: number) => (
                   <div
                     key={index}
                     className={`w-1.5 h-1.5 rounded-full transition-all ${
